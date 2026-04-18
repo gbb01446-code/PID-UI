@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PID-UI rfadj スイッチ設定ツール</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 2rem; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card-title { font-size: 13px; color: #888; margin-bottom: 12px; font-weight: 500; letter-spacing: 0.02em; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 13px; color: #555; display: block; margin-bottom: 5px; }
+  .field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d0d0ca;
+    border-radius: 8px;
+    background: #fafaf8;
+    color: #1a1a1a;
+    font-size: 14px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+  .field select:focus { outline: none; border-color: #888; }
+
+  .warn {
+    background: #fff8e6;
+    border: 1px solid #f0c060;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #7a5a00;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .grid-card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .grid-meta { font-size: 12px; color: #888; margin-bottom: 10px; }
+  .grid-meta span { font-weight: 600; color: #444; }
+  .grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr;
+    gap: 5px;
+    align-items: center;
+  }
+  .gh { font-size: 11px; color: #aaa; text-align: center; padding: 3px 0; }
+  .gl { font-size: 11px; color: #999; padding: 3px 6px 3px 0; white-space: nowrap; }
+  .gc {
+    background: #f5f5f3;
+    border: 1px solid #e0e0da;
+    border-radius: 6px;
+    padding: 6px 4px;
+    font-size: 12px;
+    text-align: center;
+    color: #333;
+    line-height: 1.3;
+  }
+  .gc .num { font-size: 10px; color: #aaa; display: block; }
+
+  .preview-card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .preview-title { font-size: 13px; color: #888; font-weight: 500; }
+  .copy-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid #d0d0ca;
+    border-radius: 6px;
+    background: #fafaf8;
+    color: #555;
+    cursor: pointer;
+  }
+  .copy-btn:hover { background: #f0f0ee; }
+  pre {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.65;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .dl-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+  .dl-btn:hover { background: #333; }
+
+  footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; }
+
+  .how-card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .how-card ol { padding-left: 1.2rem; }
+  .how-card li { font-size: 13px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+  .how-card li:last-child { margin-bottom: 0; }
+  .how-card code {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    background: #f0f0ee;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #333;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>PID-UI rfadj スイッチ設定ツール</h1>
+  <p class="subtitle">EdgeTX スイッチの割り当てを変更して rfadj.lua を生成します</p>
+
+  <div class="how-card">
+    <div class="card-title">使い方</div>
+    <ol>
+      <li>下のドロップダウンで各役割に使うスイッチを選択してください。</li>
+      <li>3×3グリッドのプレビューで割り当てを確認してください。</li>
+      <li><strong>rfadj.lua をダウンロード</strong>をクリックしてファイルを保存します。</li>
+      <li><code>rfadj.lua</code> を EdgeTX の SD カードにコピーします：<code>/SCRIPTS/FUNCTIONS/</code></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-title">スイッチの割り当て</div>
+    <div class="field">
+      <label>モードスイッチ — 奥: 調整無効 / 中: TX Set / 手前: 3×3グリッド</label>
+      <select id="sw_mode" onchange="update()">
+        <option value="sd">SD（デフォルト）</option>
+        <option value="sa">SA</option>
+        <option value="sb">SB</option>
+        <option value="sc">SC</option>
+        <option value="se">SE</option>
+        <option value="sf">SF</option>
+        <option value="sg">SG</option>
+        <option value="sh">SH</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>行スイッチ — 奥 / 中 / 手前 で行を選択</label>
+      <select id="sw_row" onchange="update()">
+        <option value="sb">SB（デフォルト）</option>
+        <option value="sa">SA</option>
+        <option value="sc">SC</option>
+        <option value="sd">SD</option>
+        <option value="se">SE</option>
+        <option value="sf">SF</option>
+        <option value="sg">SG</option>
+        <option value="sh">SH</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>列スイッチ — 奥 / 中 / 手前 で列を選択</label>
+      <select id="sw_col" onchange="update()">
+        <option value="sa">SA（デフォルト）</option>
+        <option value="sb">SB</option>
+        <option value="sc">SC</option>
+        <option value="sd">SD</option>
+        <option value="se">SE</option>
+        <option value="sf">SF</option>
+        <option value="sg">SG</option>
+        <option value="sh">SH</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="warn" id="warn">
+    ⚠ 同じスイッチが複数の役割に割り当てられています。別々のスイッチを選択してください。
+  </div>
+
+  <div class="grid-card">
+    <div class="card-title">3×3 グリッドプレビュー</div>
+    <div class="grid-meta">行: <span id="lbl_row">SB</span> &nbsp;／&nbsp; 列: <span id="lbl_col">SA</span></div>
+    <div class="grid">
+      <div class="gh"></div>
+      <div class="gh" id="h_c0"></div>
+      <div class="gh" id="h_c1"></div>
+      <div class="gh" id="h_c2"></div>
+
+      <div class="gl" id="h_r0"></div>
+      <div class="gc"><span class="num">②</span>M-Rate</div>
+      <div class="gc"><span class="num">③</span>C-Rate</div>
+      <div class="gc"><span class="num">④</span>Expo</div>
+
+      <div class="gl" id="h_r1"></div>
+      <div class="gc"><span class="num">⑤</span>P Gain</div>
+      <div class="gc"><span class="num">⑥</span>I Gain</div>
+      <div class="gc"><span class="num">⑦</span>D Gain</div>
+
+      <div class="gl" id="h_r2"></div>
+      <div class="gc"><span class="num">⑧</span>FeedFwd</div>
+      <div class="gc"><span class="num">⑨</span>B-Gain</div>
+      <div class="gc"><span class="num">⑩</span>Stop-gain</div>
+    </div>
+  </div>
+
+  <div class="preview-card">
+    <div class="preview-header">
+      <span class="preview-title">生成される rfadj.lua</span>
+      <button class="copy-btn" onclick="copyCode()">コピー</button>
+    </div>
+    <pre id="preview"></pre>
+  </div>
+
+  <button class="dl-btn" id="dl" onclick="download()">rfadj.lua をダウンロード</button>
+
+  <footer>PID-UI rfadj スイッチ設定ツール</footer>
+</div>
+
+<script>
+function genCode(mode, row, col) {
+  return `local function run()
+    local sw_mode = getValue('${mode}')
+    local fm = getFlightMode() or 0
+    local raw_idx = 0
+
+    if sw_mode < -500 then
+        -- ${mode.toUpperCase()}奥 (Up): 調整無効 (0の代わりに11を使用)
+        raw_idx = 11
+    elseif sw_mode < 500 then
+        -- ${mode.toUpperCase()}中 (Mid): TX Set (送信機側設定)
+        raw_idx = 1
+    else
+        -- ${mode.toUpperCase()}手前 (Down): 3x3 グリッド
+        local sw_row  = getValue('${row}')
+        local sw_col  = getValue('${col}')
+        if sw_row < -500 then         -- ${row.toUpperCase()}奥
+            if sw_col < -500 then raw_idx = 2      -- ② M-Rate
+            elseif sw_col < 500 then raw_idx = 3   -- ③ C-Rate
+            else raw_idx = 4 end                   -- ④ Expo (FC)
+        elseif sw_row < 500 then      -- ${row.toUpperCase()}中
+            if sw_col < -500 then raw_idx = 5      -- ⑤ P Gain
+            elseif sw_col < 500 then raw_idx = 6   -- ⑥ I Gain
+            else raw_idx = 7 end                   -- ⑦ D Gain
+        else                          -- ${row.toUpperCase()}手前
+            if sw_col < -500 then raw_idx = 8      -- ⑧ FeedForward
+            elseif sw_col < 500 then raw_idx = 9   -- ⑨ B-Gain
+            else raw_idx = 10 end                  -- ⑩ Stop-gain
+        end
+    end
+
+    -- GV8 (Index) を更新
+    if model.getGlobalVariable(7, fm) ~= raw_idx then
+        model.setGlobalVariable(7, fm, raw_idx)
+    end
+
+    -- GV9 (RF出力) を更新
+    local rf_val = -100
+    if raw_idx >= 2 and raw_idx <= 10 then
+        rf_val = (raw_idx - 6) * 20 -- Index 2(-80) ~ 10(80)
+    end
+    if model.getGlobalVariable(8, fm) ~= rf_val then
+        model.setGlobalVariable(8, fm, rf_val)
+    end
+end
+
+return { run=run }`;
+}
+
+function update() {
+  const mode = document.getElementById('sw_mode').value;
+  const row  = document.getElementById('sw_row').value;
+  const col  = document.getElementById('sw_col').value;
+
+  const warn = document.getElementById('warn');
+  const dl   = document.getElementById('dl');
+  const dup  = (mode === row) || (mode === col) || (row === col);
+  warn.style.display = dup ? 'block' : 'none';
+  dl.disabled = dup;
+  dl.style.opacity = dup ? '0.4' : '1';
+
+  document.getElementById('lbl_row').textContent = row.toUpperCase();
+  document.getElementById('lbl_col').textContent = col.toUpperCase();
+  document.getElementById('h_r0').textContent = row.toUpperCase() + ' 奥';
+  document.getElementById('h_r1').textContent = row.toUpperCase() + ' 中';
+  document.getElementById('h_r2').textContent = row.toUpperCase() + ' 手前';
+  document.getElementById('h_c0').textContent = col.toUpperCase() + ' 奥';
+  document.getElementById('h_c1').textContent = col.toUpperCase() + ' 中';
+  document.getElementById('h_c2').textContent = col.toUpperCase() + ' 手前';
+
+  document.getElementById('preview').textContent = genCode(mode, row, col);
+}
+
+function copyCode() {
+  const text = document.getElementById('preview').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'コピー完了';
+    setTimeout(() => btn.textContent = 'コピー', 1500);
+  });
+}
+
+function download() {
+  const mode = document.getElementById('sw_mode').value;
+  const row  = document.getElementById('sw_row').value;
+  const col  = document.getElementById('sw_col').value;
+  const code = genCode(mode, row, col);
+  const blob = new Blob([code], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rfadj.lua';
+  a.click();
+}
+
+update();
+</script>
+</body>
+</html>

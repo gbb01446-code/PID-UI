@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RF2 CLI adjfunc Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 2rem; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card-title { font-size: 13px; color: #888; margin-bottom: 12px; font-weight: 500; letter-spacing: 0.02em; }
+
+  .how-card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .how-card ol { padding-left: 1.2rem; }
+  .how-card li { font-size: 13px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+  .how-card li:last-child { margin-bottom: 0; }
+  .how-card code {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    background: #f0f0ee;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #333;
+  }
+
+  .field { margin-bottom: 0; }
+  .field label { font-size: 13px; color: #555; display: block; margin-bottom: 6px; }
+  .input-row { display: flex; gap: 10px; align-items: center; }
+  .field input[type=number] {
+    width: 100px;
+    padding: 8px 12px;
+    border: 1px solid #d0d0ca;
+    border-radius: 8px;
+    background: #fafaf8;
+    color: #1a1a1a;
+    font-size: 16px;
+    text-align: center;
+  }
+  .field input[type=number]:focus { outline: none; border-color: #888; }
+  .range-hint { font-size: 13px; color: #888; }
+  .range-hint strong { color: #1a1a1a; }
+
+  .check-card {
+    background: #fff8e6;
+    border: 1px solid #f0c060;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .check-title { font-size: 13px; font-weight: 600; color: #7a5a00; margin-bottom: 8px; }
+  .check-body { font-size: 13px; color: #7a5a00; line-height: 1.6; }
+  .check-body code {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    background: #fdefc0;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .check-body strong { font-weight: 700; }
+
+  .preview-card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .preview-title { font-size: 13px; color: #888; font-weight: 500; }
+  .copy-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid #d0d0ca;
+    border-radius: 6px;
+    background: #fafaf8;
+    color: #555;
+    cursor: pointer;
+  }
+  .copy-btn:hover { background: #f0f0ee; }
+  pre {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.65;
+    max-height: 480px;
+    overflow-y: auto;
+  }
+
+  .dl-btn {
+    display: none;
+    width: 100%;
+    padding: 12px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+  .dl-btn:hover { background: #333; }
+
+  footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>RF2 CLI adjfunc Generator</h1>
+  <p class="subtitle">Generate Adjustments &amp; Telemetry CLI commands for GOBLIN580.</p>
+
+  <div class="how-card">
+    <div class="card-title">HOW TO USE</div>
+    <ol>
+      <li>Enter the starting slot number for adjfunc (default: 2).</li>
+      <li>Check the warning below to confirm those slots are free in your Adjustments tab.</li>
+      <li>Copy the generated text and paste it into the CLI in Rotorflight Configurator.</li>
+      <li>The <code>save</code> command is included at the end — do not forget to run it.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-title">STARTING SLOT NUMBER</div>
+    <div class="field">
+      <label>Enter the starting value for the 2nd column (slot number) of adjfunc</label>
+      <div class="input-row">
+        <input type="number" id="start_slot" value="2" min="1" max="200" oninput="update()">
+        <span class="range-hint">→ Slots <strong id="range_start">2</strong> – <strong id="range_end">27</strong> will be used</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="check-card" id="check_card">
+    <div class="check-title">⚠ Please confirm before applying</div>
+    <div class="check-body" id="check_body"></div>
+  </div>
+
+  <div class="preview-card" id="preview_card">
+    <div class="preview-header">
+      <span class="preview-title">Generated CLI text</span>
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+    </div>
+    <pre id="preview"></pre>
+  </div>
+
+  <button class="dl-btn" id="dl_btn" onclick="download()">Download CLI text</button>
+
+  <footer>RF2 CLI adjfunc Generator</footer>
+</div>
+
+<script>
+const BASE = [
+  [2,  "6 3 1040 1120 4 875 1100 1900 2125 1 0 50"],
+  [3,  "5 3 1040 1115 5 875 1100 1900 2125 1 0 50"],
+  [4,  "7 3 1040 1120 6 875 1100 1900 2125 1 0 70"],
+  [5,  "9 3 1150 1230 4 875 1100 1900 2125 1 0 50"],
+  [6,  "8 3 1160 1235 5 875 1100 1900 2125 1 0 50"],
+  [7,  "10 3 1115 1230 6 875 1100 1900 2125 1 0 70"],
+  [8,  "12 3 1250 1350 4 875 1100 1900 2125 1 0 100"],
+  [9,  "11 3 1250 1350 5 875 1100 1900 2125 1 0 100"],
+  [10, "13 3 1250 1350 6 875 1100 1900 2125 1 0 100"],
+  [11, "18 3 1350 1450 4 875 1100 1900 2125 1 0 250"],
+  [12, "14 3 1350 1450 5 875 1100 1900 2125 1 0 250"],
+  [13, "22 3 1350 1450 6 875 1100 1900 2125 1 0 250"],
+  [14, "19 3 1450 1550 4 875 1100 1900 2125 1 0 250"],
+  [15, "15 3 1450 1550 5 875 1100 1900 2125 1 0 250"],
+  [16, "23 3 1455 1545 6 875 1100 1900 2125 1 0 250"],
+  [17, "20 3 1565 1645 4 875 1100 1900 2125 1 0 250"],
+  [18, "16 3 1565 1645 5 875 1100 1900 2125 1 0 250"],
+  [19, "24 3 1565 1645 6 875 1100 1900 2125 1 0 250"],
+  [20, "21 3 1670 1750 4 875 1100 1900 2125 1 0 250"],
+  [21, "17 3 1670 1750 5 875 1100 1900 2125 1 0 250"],
+  [22, "25 3 1670 1750 6 875 1100 1900 2125 1 0 250"],
+  [23, "57 3 1770 1840 4 875 1100 1900 2125 1 0 50"],
+  [24, "56 3 1770 1845 5 875 1100 1900 2125 1 0 50"],
+  [25, "58 3 1780 1860 6 875 1100 1900 2125 1 0 50"],
+  [26, "26 3 1880 1955 4 875 1100 1900 2125 1 25 250"],
+  [27, "27 3 1880 1955 6 875 1100 1900 2125 1 25 250"],
+];
+
+const MASTER = `set telemetry_sensors = 60,3,8,4,7,19,6,5,95,96,99,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0`;
+
+function genCode(start) {
+  const lines = [];
+  lines.push("# adjfunc");
+  BASE.forEach(([, rest], i) => {
+    lines.push(`adjfunc ${start + i} ${rest}`);
+  });
+  lines.push("");
+  lines.push("# master");
+  lines.push(MASTER);
+  lines.push("");
+  lines.push("save");
+  return lines.join("\n");
+}
+
+function update() {
+  const raw = parseInt(document.getElementById('start_slot').value, 10);
+  const start = isNaN(raw) || raw < 1 ? 1 : raw;
+  const end = start + BASE.length - 1;
+
+  document.getElementById('range_start').textContent = start;
+  document.getElementById('range_end').textContent = end;
+
+  const checkCard = document.getElementById('check_card');
+  const checkBody = document.getElementById('check_body');
+  checkCard.style.display = 'block';
+  checkBody.innerHTML =
+    `Open the <strong>Adjustments tab</strong> in Rotorflight Configurator and verify that ` +
+    `slots <code>${start}</code> through <code>${end}</code> (${BASE.length} slots total) are ` +
+    `<strong>all unused</strong> before pasting the CLI text.<br><br>` +
+    `If any existing settings would be overwritten, please back up your configuration first.`;
+
+  const code = genCode(start);
+  document.getElementById('preview').textContent = code;
+  document.getElementById('preview_card').style.display = 'block';
+  document.getElementById('dl_btn').style.display = 'block';
+}
+
+function copyCode() {
+  const text = document.getElementById('preview').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+function download() {
+  const raw = parseInt(document.getElementById('start_slot').value, 10);
+  const start = isNaN(raw) || raw < 1 ? 1 : raw;
+  const code = genCode(start);
+  const blob = new Blob([code], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `GOBLIN580_cli_slot${start}.txt`;
+  a.click();
+}
+
+update();
+</script>
+</body>
+</html>
