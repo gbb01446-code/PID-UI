@@ -30,7 +30,7 @@ An EdgeTX 2.12 / Rotorflight 2.2 compatible widget for real-time parameter adjus
 PID-UI/
 ├── README.md
 ├── Pid_ui_model.yml              # EdgeTX model template
-├── RTFL_cli_GOBLIN580.txt        # Rotorflight CLI commands
+├── Pid_ui_CLI.txt                # Rotorflight CLI commands
 ├── docs/
 │   ├── README_ja.md
 │   ├── README_en.md
