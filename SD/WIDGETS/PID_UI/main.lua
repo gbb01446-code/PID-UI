@@ -61,11 +61,15 @@ local function getFilePath(bank_name)
 end
 
 -- フライトモード → バンク名変換
--- FM0〜2 に対応。未知のFMは "FM<n>" として安全にフォールバック
-local FM_NAMES = { [0]="FM0", [1]="FM1", [2]="FM2" }
+-- FM番号から動的に生成するため、FM数に上限なし
 local function getBankName()
     local fm = getFlightMode() or 0
-    return FM_NAMES[fm] or ("FM" .. fm)
+    return "FM" .. fm
+end
+
+-- バンク名からFM番号を取得
+local function getFMFromBank(bank_name)
+    return tonumber(string.match(bank_name, "^FM(%d+)$")) or 0
 end
 
 -- インデックス対応キー
@@ -110,8 +114,11 @@ local function loadBankData(bank)
 end
 
 local function create(zone, options)
-    local all_data    = { FM0 = loadBankData("FM0"), FM1 = loadBankData("FM1"), FM2 = loadBankData("FM2") }
+    -- 起動時のFMを検出し、そのFMのデータをロード
+    -- 他のFMは切替時に遅延ロードする (起動時間を短縮)
     local initial_bank = getBankName()
+    local all_data     = {}
+    all_data[initial_bank] = loadBankData(initial_bank)
     return {
         zone               = zone,
         options            = options,
@@ -180,7 +187,10 @@ local function refresh(wgt)
     --  set後は即時キャッシュを更新するため、周期外でも整合性を保つ
     -- ==========================================================================
     if now > wgt.last_gv_tick then
-        for f = 0, 2 do
+        -- TX Set表示用GVキャッシュ: 全FMを動的に取得
+        -- model.getFlightModesCount() でFM数を取得し、存在するFM分だけキャッシュ
+        local fm_count = (model.getFlightModesCount and model.getFlightModesCount()) or 3
+        for f = 0, fm_count - 1 do
             for g = 0, 3 do
                 wgt.gv_vals["f" .. f .. "g" .. g] = model.getGlobalVariable(g, f)
             end
@@ -192,6 +202,10 @@ local function refresh(wgt)
     local cb = getBankName()
 
     if cb ~= wgt.last_bank then
+        -- 未ロードのバンクは切替時に遅延ロード (任意のFM数に対応)
+        if not wgt.all_vals[cb] then
+            wgt.all_vals[cb] = loadBankData(cb)
+        end
         wgt.vals      = wgt.all_vals[cb]
         wgt.last_bank = cb
     end
@@ -362,98 +376,106 @@ local function refresh(wgt)
     local c_a = (wgt.options and wgt.options.ColorActive) or RED
     local c_l = (wgt.options and wgt.options.ColorLabel)  or WHITE
 
+    -- -----------------------------------------------------------------------
+    --  レスポンシブレイアウト計算
+    --  zone.h に応じてフォントサイズ・行高さ・余白を動的に決定する
+    --
+    --  区分:
+    --    LARGE  : h >= 280  (TX15 フルスクリーン等)
+    --    MEDIUM : h >= 220  (TX16S MK2 フルスクリーン / TX15 分割等)
+    --    SMALL  : h <  220  (分割画面・小型液晶等)
+    -- -----------------------------------------------------------------------
+    local fontL, fontS, footerH, headerH, labelW
+    if h >= 280 then
+        -- LARGE: 通常フォント
+        fontL   = MIDSIZE   -- 値表示フォント
+        fontS   = SMLSIZE   -- ラベルフォント
+        footerH = 28        -- フッター高さ
+        headerH = 18        -- ヘッダー高さ
+        labelW  = 75        -- TX Setラベル幅
+    elseif h >= 220 then
+        -- MEDIUM: ラベルを小さく、値は維持
+        fontL   = MIDSIZE
+        fontS   = SMLSIZE
+        footerH = 22
+        headerH = 15
+        labelW  = 65
+    else
+        -- SMALL: 全体を小さく
+        fontL   = SMLSIZE
+        fontS   = SMLSIZE
+        footerH = 18
+        headerH = 13
+        labelW  = 55
+    end
+
+    -- 行高さ: フッター・ヘッダー・余白を除いた残りを5行で均等割り
+    local lineH     = math.floor((h - footerH - headerH - 10) / 5)
     local infoW     = w * 0.28
-    local gridStart = x + infoW + 10
-    local startY    = y + 5
-    local lineH     = 33
+    local gridStart = x + infoW + 8
+    local startY    = y + headerH
+    local alignX    = x + infoW - 10
 
     -- 左側パネル: モデル情報
-    local alignX = x + infoW - 15
-    drawText(x + 10, startY,           model.getInfo().name,              MIDSIZE + c_l)
-    drawText(x + 10, startY + lineH,   "T1:",                             SMLSIZE + c_l)
-    drawText(alignX, startY + lineH,   formatTime(model.getTimer(0).value), MIDSIZE + c_a + RIGHT)
-    drawText(x + 10, startY + lineH*2, "RPM:",                            SMLSIZE + c_l)
-    drawText(alignX, startY + lineH*2, getVal("Hspd") or 0,               MIDSIZE + c_a + RIGHT)
+    drawText(x + 6, y + 2,             model.getInfo().name,               fontL + c_l)
+    drawText(x + 6, startY + lineH,    "T1:",                              fontS + c_l)
+    drawText(alignX, startY + lineH,   formatTime(model.getTimer(0).value), fontL + c_a + RIGHT)
+    drawText(x + 6, startY + lineH*2,  "RPM:",                             fontS + c_l)
+    drawText(alignX, startY + lineH*2, getVal("Hspd") or 0,                fontL + c_a + RIGHT)
 
     local battV = (wgt.options and wgt.options.BattSrc and wgt.options.BattSrc ~= 0)
                   and getVal(wgt.options.BattSrc) or 0
-    drawText(x + 10, startY + lineH*3, "V:",                              SMLSIZE + c_l)
+    drawText(x + 6, startY + lineH*3,  "V:",                               fontS + c_l)
     drawText(alignX, startY + lineH*3, string.format("%.1f", battV),
-             MIDSIZE + (battV < 3.5 and RED or c_a) + RIGHT)
-    drawText(x + 10, startY + lineH*4, "Bat%",                            SMLSIZE + c_l)
-    drawText(alignX, startY + lineH*4, getVal("Bat%") or 0,               MIDSIZE + c_a + RIGHT)
+             fontL + (battV < 3.5 and RED or c_a) + RIGHT)
+    drawText(x + 6, startY + lineH*4,  "Bat%",                             fontS + c_l)
+    drawText(alignX, startY + lineH*4, getVal("Bat%") or 0,                fontL + c_a + RIGHT)
 
-    drawLine(gridStart - 5, y + 10, gridStart - 5, y + h - 45, SOLID, FORCE)
+    drawLine(gridStart - 4, y + 6, gridStart - 4, y + h - footerH - 4, SOLID, FORCE)
 
     -- 右側パネル: モードに応じて表示切替
-    if activeStep == 1 then
-        -- TX Set 画面: GV1〜4 を全FM分表示
-        local colW = (w - gridStart - 75) / 3
-        drawText(gridStart + 5, y + 5, "TX Set", SMLSIZE + c_l)
-        for i = 0, 2 do
-            drawText(gridStart + 75 + (i + 0.5)*colW, y + 5, "FM"..i, SMLSIZE + c_l + CENTER)
+    local function drawTXSet(editable)
+        -- TX Set表示 (activeStep=1: 編集可, activeStep=11: 参照のみ)
+        -- FM数を動的に取得し、表示列数をFM数に合わせる
+        local fm_count = (model.getFlightModesCount and model.getFlightModesCount()) or 3
+        local colW     = (w - gridStart - labelW) / fm_count
+        local maxRPM   = (wgt.options and wgt.options.MaxRPM) or 3000
+        drawText(gridStart + 4, y + 2, "TX Set", fontS + c_l)
+        for i = 0, fm_count - 1 do
+            drawText(gridStart + labelW + (i + 0.5)*colW, y + 2, "FM"..i, fontS + c_l + CENTER)
         end
-
-        local maxRPM  = (wgt.options and wgt.options.MaxRPM)  or 2500
-
         local params = {
-            { name="Thr RPM", gv=0, chan=c13 },
-            { name="Coll P.", gv=1, chan=c11 },
-            { name="A/E Expo",gv=2, chan=c10 },
-            { name="Rud Expo",gv=3, chan=c12 },
+            { name="Thr RPM", gv=0, chan= editable and c13 or 0 },
+            { name="Coll P.", gv=1, chan= editable and c11 or 0 },
+            { name="A/E Exp", gv=2, chan= editable and c10 or 0 },
+            { name="Rud Exp", gv=3, chan= editable and c12 or 0 },
         }
         for idx, p in ipairs(params) do
-            local ry          = startY + (lineH * idx) - 5
-            local isRowActive = (math.abs(p.chan) > 500)
-            drawText(gridStart + 5, ry, p.name, SMLSIZE + (isRowActive and c_a or c_l))
-            for i = 0, 2 do
+            local ry          = startY + (lineH * idx) - 4
+            local isRowActive = editable and (math.abs(p.chan) > 500)
+            drawText(gridStart + 4, ry, p.name, fontS + (isRowActive and c_a or c_l))
+            for i = 0, fm_count - 1 do
                 local val   = wgt.gv_vals["f" .. i .. "g" .. p.gv] or 0
                 local color = (fm == i) and (isRowActive and c_a or c_l) or c_p
                 if p.gv == 0 then
-                    -- Thr: GV1 -100〜100 → 0〜MaxRPM に変換して表示
-                    local disp = thrRPM(val, maxRPM)
-                    drawNumber(gridStart + 75 + (i + 0.5)*colW, ry, disp, MIDSIZE + CENTER + color)
+                    drawNumber(gridStart + labelW + (i + 0.5)*colW, ry,
+                               thrRPM(val, maxRPM), fontL + CENTER + color)
                 elseif p.name == "Coll P." then
-                    -- コレクティブ: 度数表示 (共通関数を使用)
-                    local disp = string.format("%.1f", collDeg(val, maxColl))
-                    drawText(gridStart + 75 + (i + 0.5)*colW, ry, disp, MIDSIZE + CENTER + color)
+                    drawText(gridStart + labelW + (i + 0.5)*colW, ry,
+                             string.format("%.1f", collDeg(val, maxColl)), fontL + CENTER + color)
                 else
-                    drawNumber(gridStart + 75 + (i + 0.5)*colW, ry, val, MIDSIZE + CENTER + color)
+                    drawNumber(gridStart + labelW + (i + 0.5)*colW, ry,
+                               val, fontL + CENTER + color)
                 end
             end
         end
+    end
+
+    if activeStep == 1 then
+        drawTXSet(true)   -- 編集可
 
     elseif activeStep == 11 then
-        -- SD奥 (調整無効): TX Set画面と同じ表示
-        -- RF2接続中でも参照できるよう送信機側パラメータを表示する
-        local colW2   = (w - gridStart - 75) / 3
-        local maxRPM2 = (wgt.options and wgt.options.MaxRPM) or 3000
-        drawText(gridStart + 5, y + 5, "TX Set", SMLSIZE + c_l)
-        for i = 0, 2 do
-            drawText(gridStart + 75 + (i + 0.5)*colW2, y + 5, "FM"..i, SMLSIZE + c_l + CENTER)
-        end
-        local params2 = {
-            { name="Thr RPM", gv=0 },
-            { name="Coll P.", gv=1 },
-            { name="A/E Expo",gv=2 },
-            { name="Rud Expo",gv=3 },
-        }
-        for idx, p in ipairs(params2) do
-            local ry = startY + (lineH * idx) - 5
-            drawText(gridStart + 5, ry, p.name, SMLSIZE + c_l)
-            for i = 0, 2 do
-                local val   = wgt.gv_vals["f" .. i .. "g" .. p.gv] or 0
-                local color = (fm == i) and c_l or c_p
-                if p.gv == 0 then
-                    drawNumber(gridStart + 75 + (i + 0.5)*colW2, ry, thrRPM(val, maxRPM2), MIDSIZE + CENTER + color)
-                elseif p.name == "Coll P." then
-                    local disp = string.format("%.1f", collDeg(val, maxColl))
-                    drawText(gridStart + 75 + (i + 0.5)*colW2, ry, disp, MIDSIZE + CENTER + color)
-                else
-                    drawNumber(gridStart + 75 + (i + 0.5)*colW2, ry, val, MIDSIZE + CENTER + color)
-                end
-            end
-        end
+        drawTXSet(false)  -- 参照のみ
 
     elseif activeStep >= 2 and activeStep <= 10 then
         -- RF2 Adjustments 画面: 3軸 × パラメータグリッド
@@ -461,11 +483,12 @@ local function refresh(wgt)
         local headers   = isScreen1
                           and {"M-Rt", "C-Rt", "Exp", "T-L", "T-R"}
                           or  {"P",    "I",    "D",   "FF",  "B"}
-        local colW      = (w - gridStart - 40) / #headers
+        local axLabelW  = (h >= 280) and 45 or 36  -- 軸ラベル幅もh依存
+        local colW      = (w - gridStart - axLabelW) / #headers
 
         -- ヘッダー描画
         for idx, txt in ipairs(headers) do
-            drawText(gridStart + 50 + (idx-0.5)*colW, y + 5, txt, SMLSIZE + c_l + CENTER)
+            drawText(gridStart + axLabelW + (idx-0.5)*colW, y + 2, txt, fontS + c_l + CENTER)
         end
 
         local axes = {"Ail", "Ele", "Rud"}
@@ -473,7 +496,7 @@ local function refresh(wgt)
             local ry      = startY + (lineH * i)
             local ax      = axes[i]
             local isSelAx = (wgt.active_axis == ax)
-            drawText(gridStart + 5, ry, ax, MIDSIZE + (isSelAx and c_a or c_l))
+            drawText(gridStart + 4, ry, ax, fontL + (isSelAx and c_a or c_l))
 
             if isScreen1 then
                 local keys = {
@@ -485,15 +508,13 @@ local function refresh(wgt)
                         local val = wgt.vals[ax .. item.k] or 0
                         local isF = (isSelAx and activeStep == item.id)
                         if item.id == 10 then
-                            -- Stop-Gain: アクティブな左右どちらかのみ強調
                             isF = (isSelAx and activeStep == 10 and item.k == wgt.last_trim_side)
                         end
-                        drawNumber(gridStart + 50 + (j-0.5)*colW, ry, val,
-                                   MIDSIZE + (isF and c_a or c_p) + CENTER)
+                        drawNumber(gridStart + axLabelW + (j-0.5)*colW, ry, val,
+                                   fontL + (isF and c_a or c_p) + CENTER)
                     end
                 end
             else
-                -- Screen 2: PID / FF / B-Gain
                 local keys = {
                     {k="P", id=5}, {k="I", id=6}, {k="D", id=7},
                     {k="F", id=8}, {k="B", id=9}
@@ -501,24 +522,23 @@ local function refresh(wgt)
                 for j, item in ipairs(keys) do
                     local val = wgt.vals[ax .. item.k] or 0
                     local isF = (isSelAx and activeStep == item.id)
-                    drawNumber(gridStart + 50 + (j-0.5)*colW, ry, val,
-                               MIDSIZE + (isF and c_a or c_p) + CENTER)
+                    drawNumber(gridStart + axLabelW + (j-0.5)*colW, ry, val,
+                               fontL + (isF and c_a or c_p) + CENTER)
                 end
             end
         end
 
     else
         -- 未定義のactiveStep (安全のため空白表示)
-        -- 何もしない
     end
 
     -- フッター: バンク名 / AdjV現在値
-    local footerY = h - 30
-    drawLine(x + 10, footerY - 5, x + w - 10, footerY - 5, SOLID, FORCE)
-    drawText(x + 15,      footerY, "Bank:", MIDSIZE + c_l)
-    drawText(x + 80,      footerY, cb,      MIDSIZE + c_a)
-    drawText(x + w - 120, footerY, "AdjV:", MIDSIZE + c_l)
-    drawNumber(x + w - 50, footerY, raw_adj, MIDSIZE + c_a)
+    local footerY = y + h - footerH
+    drawLine(x + 6, footerY - 2, x + w - 6, footerY - 2, SOLID, FORCE)
+    drawText(x + 10,      footerY, "Bank:",  fontS + c_l)
+    drawText(x + 55,      footerY, cb,       fontL + c_a)
+    drawText(x + w - 100, footerY, "AdjV:",  fontS + c_l)
+    drawNumber(x + w - 45, footerY, raw_adj, fontL + c_a)
 end
 
 local options = {
