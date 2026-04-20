@@ -56,16 +56,6 @@ flightModeData:
         val: 100
       1:
         val: 73
-      6:
-        val: 50
-      7:
-        val: 6
-      9:
-        val: 1
-      11:
-        val: 1
-      13:
-        val: -1
   1:
     trim:
       0:
@@ -93,12 +83,6 @@ flightModeData:
         val: 0
       3:
         val: 0
-      4:
-        val: 0
-      5:
-        val: 0
-      6:
-        val: 70
   2:
     trim:
       0:
@@ -126,21 +110,87 @@ flightModeData:
         val: 0
       3:
         val: 0
-      4:
-        val: 0
-      5:
-        val: 0
-      6:
-        val: 90
   3:
     trim:
+      0:
+        value: 0
+        mode: 18
       1:
         value: 0
         mode: 18
-    swtch: SF1
+      2:
+        value: 0
+        mode: 18
+      3:
+        value: 0
+        mode: 18
+    swtch: NONE
     name: ""
     fadeIn: 0
     fadeOut: 0
+    gvars:
+      0:
+        val: 100
+      1:
+        val: 0
+      2:
+        val: 0
+      3:
+        val: 0
+  4:
+    trim:
+      0:
+        value: 0
+        mode: 18
+      1:
+        value: 0
+        mode: 18
+      2:
+        value: 0
+        mode: 18
+      3:
+        value: 0
+        mode: 18
+    swtch: NONE
+    name: ""
+    fadeIn: 0
+    fadeOut: 0
+    gvars:
+      0:
+        val: 100
+      1:
+        val: 0
+      2:
+        val: 0
+      3:
+        val: 0
+  5:
+    trim:
+      0:
+        value: 0
+        mode: 18
+      1:
+        value: 0
+        mode: 18
+      2:
+        value: 0
+        mode: 18
+      3:
+        value: 0
+        mode: 18
+    swtch: NONE
+    name: ""
+    fadeIn: 0
+    fadeOut: 0
+    gvars:
+      0:
+        val: 100
+      1:
+        val: 0
+      2:
+        val: 0
+      3:
+        val: 0
 mixData:
   - destCh: 0
     srcRaw: I0
@@ -602,13 +652,6 @@ gvars:
     min: 924
     max: 924
     popup: 0
-    prec: 0
-    unit: 0
-  6:
-    name: ""
-    min: 0
-    max: 0
-    popup: 1
     prec: 0
     unit: 0
   7:
