@@ -436,13 +436,16 @@ local function refresh(wgt)
     -- 右側パネル: モードに応じて表示切替
     local function drawTXSet(editable)
         -- TX Set表示 (activeStep=1: 編集可, activeStep=11: 参照のみ)
-        -- FM数を動的に取得し、表示列数をFM数に合わせる
-        local fm_count = (model.getFlightModesCount and model.getFlightModesCount()) or 3
-        local colW     = (w - gridStart - labelW) / fm_count
-        local maxRPM   = (wgt.options and wgt.options.MaxRPM) or 3000
+        -- 現在のFMが属するグループ(3つ単位)を3列で表示
+        --   FM0〜2操作中 → FM0/FM1/FM2 を表示
+        --   FM3〜5操作中 → FM3/FM4/FM5 を表示
+        local group_start = math.floor(fm / 3) * 3  -- 0 or 3
+        local colW        = (w - gridStart - labelW) / 3
+        local maxRPM      = (wgt.options and wgt.options.MaxRPM) or 3000
         drawText(gridStart + 4, y + 2, "TX Set", fontS + c_l)
-        for i = 0, fm_count - 1 do
-            drawText(gridStart + labelW + (i + 0.5)*colW, y + 2, "FM"..i, fontS + c_l + CENTER)
+        for i = 0, 2 do
+            local fmi = group_start + i
+            drawText(gridStart + labelW + (i + 0.5)*colW, y + 2, "FM"..fmi, fontS + c_l + CENTER)
         end
         local params = {
             { name="Thr RPM", gv=0, chan= editable and c13 or 0 },
@@ -454,9 +457,10 @@ local function refresh(wgt)
             local ry          = startY + (lineH * idx) - 4
             local isRowActive = editable and (math.abs(p.chan) > 500)
             drawText(gridStart + 4, ry, p.name, fontS + (isRowActive and c_a or c_l))
-            for i = 0, fm_count - 1 do
-                local val   = wgt.gv_vals["f" .. i .. "g" .. p.gv] or 0
-                local color = (fm == i) and (isRowActive and c_a or c_l) or c_p
+            for i = 0, 2 do
+                local fmi   = group_start + i
+                local val   = wgt.gv_vals["f" .. fmi .. "g" .. p.gv] or 0
+                local color = (fm == fmi) and (isRowActive and c_a or c_l) or c_p
                 if p.gv == 0 then
                     drawNumber(gridStart + labelW + (i + 0.5)*colW, ry,
                                thrRPM(val, maxRPM), fontL + CENTER + color)
