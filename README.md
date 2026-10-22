@@ -1,5 +1,5 @@
 # PID_UI Widget
-Test
+
 EdgeTX 2.12 / Rotorflight 2.2 対応のパラメータ調整・表示Widgetです。  
 An EdgeTX 2.12 / Rotorflight 2.2 compatible widget for real-time parameter adjustment and display.
 
